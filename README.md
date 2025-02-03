@@ -61,6 +61,156 @@ This project is an end-to-end data analysis solution designed to extract critica
      - Analyzing peak sales periods and customer buying patterns.
      - Profit margin analysis by branch and category.
    - **Documentation**: Keep clear notes of each query's objective, approach, and results.
+```
+-- BUSINESS PROBLEMS
+-- Q1. Find the different payment method and number of transactions, number of qty sold
+SELECT 
+	DISTINCT payment_method,
+    COUNT(*) as no_payments,
+    SUM(quantity) as no_qty_sold
+FROM walmart
+GROUP BY payment_method;
+
+-- Q2. Identify the highest-rated category in each branch, disoplaying the branch, category, avg rating
+SELECT * FROM 
+(SELECT 
+	Branch,
+    Category,
+    AVG(rating) as  avg_rating,
+    RANK() OVER(PARTITION BY Branch ORDER BY AVG(rating) DESC) as ranking
+FROM WALMART
+GROUP BY 1,2) AS ranked_data WHERE ranking = 1;
+
+-- Q3. Identify the busiest day for each branch based on the number of transactions
+SELECT * FROM (
+    SELECT  
+        Branch,  
+        DATE_FORMAT(STR_TO_DATE(date, '%d/%m/%y'), '%W') AS day_name,  
+        COUNT(*) AS no_transactions,  
+        RANK() OVER(PARTITION BY Branch ORDER BY COUNT(*) DESC) AS ranking  
+    FROM walmart  
+    GROUP BY 1,2
+) AS ranked_data  
+WHERE ranking = 1;
+
+-- Q4. Calculated the total quantity of items sold per payment method. List payment_method and total_quantity
+SELECT 
+	payment_method,
+    SUM(quantity) as no_qty_sold
+FROM walmart
+GROUP BY payment_method;
+
+-- Q5. Determine the average, minimum, and maximum rating of products for each city. List the city, average_rating, min_rating, and max_rating
+SELECT 
+	city,
+    category,
+    MIN(rating) as min_rating,
+    MAX(rating) as max_rating,
+    AVG(rating) as avg_rating
+FROM walmart
+GROUP BY 1,2;
+
+-- Q6. Calculate the Total Revenue for Each Branch
+SELECT 
+    branch, 
+    SUM(total) AS total_revenue
+FROM walmart
+GROUP BY branch;
+
+-- Q7. Find the Branch with the Highest Average Rating
+SELECT 
+    branch, 
+    AVG(rating) AS avg_rating
+FROM walmart
+GROUP BY branch
+ORDER BY avg_rating DESC
+LIMIT 1;
+
+-- Q8. Count the Number of Transactions by Payment Method for Each Branch
+SELECT 
+    branch, 
+    payment_method, 
+    COUNT(*) AS transaction_count
+FROM walmart
+GROUP BY branch, payment_method;
+
+-- Q9. Calculate the Total Profit for Each Category (Based on Profit Margin and Total Sales)
+SELECT 
+    category, 
+    SUM(total * profit_margin) AS total_profit
+FROM walmart
+GROUP BY category
+ORDER BY total_profit DESC;
+
+-- Q10. Get the Day of the Week with the Highest Number of Transactions for Each Branch
+SELECT 
+    branch,
+    DAYNAME(STR_TO_DATE(date, '%d/%m/%y')) AS day_of_week,
+    COUNT(*) AS transaction_count
+FROM walmart
+GROUP BY branch, day_of_week
+ORDER BY branch, transaction_count DESC;
+
+-- Q11. Calculate the total proft for each category by considering total_profit as (unit_price * quantity * profit_margin)
+-- List category and total_profit, ordered from highest to lowest profit
+SELECT
+	category,
+    SUM(total) as total_revenue,
+    SUM(total * profit_margin) as profit
+FROM walmart
+GROUP BY 1;
+
+-- Q12. Determine the most common payment method for each branch. Display branch and the preferred payment method
+WITH cte AS (
+    SELECT 
+        branch,
+        payment_method,
+        COUNT(*) AS total_trans,
+        RANK() OVER (PARTITION BY branch ORDER BY COUNT(*) DESC) AS ranking
+    FROM walmart
+    GROUP BY branch, payment_method
+)
+SELECT * FROM cte WHERE ranking = 1;
+
+-- Q13. Categorise sales into 3 groups morning, afternoon and evening. find out each of the shift and number of invoices
+SELECT branch,
+    CASE 
+        WHEN HOUR(TIME(time)) < 12 THEN 'Morning'
+        WHEN HOUR(TIME(time)) BETWEEN 12 AND 17 THEN 'Afternoon'
+        ELSE 'Evening'
+    END AS day_time,
+    COUNT(*)
+FROM walmart
+GROUP BY 1,2
+ORDER BY 1,3 DESC;
+
+-- Q14. Identify 5 branches with highest decrease in revenue from 2022 to 2023
+WITH revenue_2022 AS (
+    SELECT branch, 
+           SUM(total) AS revenue 
+    FROM walmart 
+    WHERE YEAR(STR_TO_DATE(date, '%d/%m/%y')) = 2022 
+    GROUP BY branch
+),
+revenue_2023 AS (
+    SELECT branch, 
+           SUM(total) AS revenue 
+    FROM walmart 
+    WHERE YEAR(STR_TO_DATE(date, '%d/%m/%y')) = 2023 
+    GROUP BY branch
+)
+SELECT 
+	previous_year.branch,
+    previous_year.revenue AS previous_year_revenue,
+    current_year.revenue AS current_year_revenue,
+    ROUND((previous_year.revenue - current_year.revenue) / previous_year.revenue * 100,2) as difference
+FROM revenue_2022 AS previous_year 
+JOIN revenue_2023 AS current_year 
+ON previous_year.branch = current_year.branch
+WHERE previous_year.revenue > current_year.revenue
+ORDER BY difference DESC
+LIMIT 5;
+```
 
 ### 10. Project Publishing and Documentation
    - **Documentation**: Maintain well-structured documentation of the entire process in Markdown or a Jupyter Notebook.
